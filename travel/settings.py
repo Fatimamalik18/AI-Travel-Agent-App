@@ -15,9 +15,23 @@ SECRET_KEY = 'django-insecure-^xssiwa7v&wp46+_cg+r)je@7_gsnjj0r2tv+v0=6xbkfx+n93
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
+CORS_ALLOW_ALL_ORIGINS = True
 
+# (optional but safe for APIs)
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+CORS_ALLOW_HEADERS = [
+    "*",
+]
 # Application definition
 
 INSTALLED_APPS = [
@@ -30,7 +44,7 @@ INSTALLED_APPS = [
     "rest_framework",
      "rest_framework_simplejwt",
 
-
+  "corsheaders",
     'accounts',
     'itineraries',
     'AI_engine',
@@ -40,6 +54,7 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
 MIDDLEWARE = [
+       "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -48,6 +63,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
 
 ROOT_URLCONF = 'travel.urls'
 
