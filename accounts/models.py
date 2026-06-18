@@ -1,6 +1,16 @@
 import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+
+
+# ==========================================
+# DATE/TIME VALIDATORS
+# ==========================================
+def validate_future_datetime(value):
+    if value and value < timezone.now():
+        raise ValidationError("Purana date/time accept nahi hoga. Future ka date/time dalein.")
 
 
 class CustomUser(AbstractUser):
@@ -120,9 +130,6 @@ class UserPreferences(models.Model):
         return f"{self.user.username} - Preferences"
 
 
-# ===========================
-# CHANGED: Interest ENUM ADDED
-# ===========================
 class Interest(models.Model):
 
     class InterestChoices(models.TextChoices):
@@ -133,11 +140,9 @@ class Interest(models.Model):
         SPORTS    = "sports", "Sports"
         TECH      = "tech", "Technology"
         MUSIC     = "music", "Music"
-       
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    # CHANGED: name field converted to ENUM
     name = models.CharField(
         max_length=20,
         choices=InterestChoices.choices,
@@ -167,7 +172,13 @@ class SocialAccount(models.Model):
     provider_user_id = models.CharField(max_length=255)
     access_token = models.TextField()
     refresh_token = models.TextField(null=True, blank=True)
-    token_expires_at = models.DateTimeField(null=True, blank=True)
+
+    # ✅ CHECK ADDED: token future mein expire hona chahiye
+    token_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        validators=[validate_future_datetime]
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -201,20 +212,33 @@ class Notification(models.Model):
         REMINDER = "reminder", "Reminder"
         ALERT    = "alert", "Alert"
         SYSTEM   = "system", "System"
+
     class NotificationStatusChoices(models.TextChoices):
         UNREAD = "unread", "Unread"
         READ   = "read", "Read"
-        
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="notifications")
 
     type = models.CharField(max_length=30, choices=NotificationTypeChoices.choices)
     title = models.CharField(max_length=255)
     body = models.TextField()
+
+    # ✅ CHECK ADDED: read_at future mein nahi ho sakta — sirf past/present valid hai
     read_at = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=NotificationStatusChoices.choices, default=NotificationStatusChoices.UNREAD)   
+
+    status = models.CharField(
+        max_length=20,
+        choices=NotificationStatusChoices.choices,
+        default=NotificationStatusChoices.UNREAD
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "notifications"
         ordering = ["-created_at"]
+
+    # ✅ read_at ke liye past/present check — future mein read nahi ho sakta
+    def clean(self):
+        if self.read_at and self.read_at > timezone.now():
+            raise ValidationError({"read_at": "Read time future mein nahi ho sakta."})

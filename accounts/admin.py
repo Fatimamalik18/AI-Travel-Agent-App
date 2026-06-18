@@ -10,9 +10,6 @@ from .models import (
 )
 
 
-# ==============================================================
-# CUSTOM USER ADMIN
-# ==============================================================
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
 
@@ -53,10 +50,6 @@ class CustomUserAdmin(UserAdmin):
     ordering      = ("-date_joined",)
 
 
-# ==============================================================
-# USER PREFERENCES ADMIN
-# home_city ab user_preferences mein nahi — users table mein hai
-# ==============================================================
 @admin.register(UserPreferences)
 class UserPreferencesAdmin(admin.ModelAdmin):
 
@@ -67,9 +60,6 @@ class UserPreferencesAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created_at", "updated_at")
 
 
-# ==============================================================
-# SOCIAL ACCOUNT ADMIN
-# ==============================================================
 @admin.register(SocialAccount)
 class SocialAccountAdmin(admin.ModelAdmin):
 
@@ -80,9 +70,6 @@ class SocialAccountAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created_at")
 
 
-# ==============================================================
-# USER VEHICLE ADMIN
-# ==============================================================
 @admin.register(UserVehicle)
 class UserVehicleAdmin(admin.ModelAdmin):
 
@@ -93,9 +80,6 @@ class UserVehicleAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created_at", "updated_at")
 
 
-# ==============================================================
-# INTEREST ADMIN
-# ==============================================================
 @admin.register(Interest)
 class InterestAdmin(admin.ModelAdmin):
 
@@ -105,10 +89,6 @@ class InterestAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created_at")
 
 
-# ==============================================================
-# NOTIFICATION ADMIN
-# trip field nahi hai Notification model mein — isliye hataya
-# ==============================================================
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
 
