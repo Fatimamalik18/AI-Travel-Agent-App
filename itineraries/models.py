@@ -1,6 +1,16 @@
 import uuid
 from django.db import models
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 from accounts.models import CustomUser
+
+
+# ==========================================
+# DATE VALIDATOR
+# ==========================================
+def validate_future_date(value):
+    if value < timezone.now().date():
+        raise ValidationError("Purani date accept nahi hogi. Aaj ya future ki date dalein.")
 
 
 # =========================
@@ -9,16 +19,15 @@ from accounts.models import CustomUser
 class Itinerary(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
     trip_id = models.UUIDField(unique=True)
 
-    estimated_total_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    accommodation_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    transport_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    food_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    activities_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    fuel_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    misc_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    estimated_total_cost  = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    accommodation_cost    = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    transport_cost        = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    food_cost             = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    activities_cost       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    fuel_cost             = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    misc_cost             = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -43,15 +52,16 @@ class ItineraryDay(models.Model):
     )
 
     trip_destination_id = models.UUIDField(null=True, blank=True)
+    day_number          = models.IntegerField()
 
-    day_number = models.IntegerField()
-    date = models.DateField()
+    # ✅ CHECK: Past date accept nahi hogi
+    date = models.DateField(validators=[validate_future_date])
 
     theme = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
-        db_table = "itinerary_days"
-        ordering = ["day_number"]
+        db_table    = "itinerary_days"
+        ordering    = ["day_number"]
 
     def __str__(self):
         return f"Day {self.day_number}"
@@ -63,14 +73,14 @@ class ItineraryDay(models.Model):
 class Activity(models.Model):
 
     class ActivityCategory(models.TextChoices):
-        FOOD = "food", "Food"
-        ACTIVITY = "activity", "Activity"
-        HOTEL = "hotel", "Hotel"
+        FOOD      = "food",      "Food"
+        ACTIVITY  = "activity",  "Activity"
+        HOTEL     = "hotel",     "Hotel"
         TRANSPORT = "transport", "Transport"
 
     class TransportMode(models.TextChoices):
-        CAR = "car", "Car"
-        BUS = "bus", "Bus"
+        CAR  = "car",  "Car"
+        BUS  = "bus",  "Bus"
         WALK = "walk", "Walk"
         BIKE = "bike", "Bike"
 
@@ -83,12 +93,11 @@ class Activity(models.Model):
     )
 
     order_index = models.IntegerField(default=1)
-    time = models.TimeField(null=True, blank=True)
+    time        = models.TimeField(null=True, blank=True)  # No past/future check — day context mein valid
 
-    title = models.CharField(max_length=255)
+    title       = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
-
-    category = models.CharField(max_length=50, choices=ActivityCategory.choices)
+    category    = models.CharField(max_length=50, choices=ActivityCategory.choices)
 
     transport_mode = models.CharField(
         max_length=30,
@@ -99,7 +108,7 @@ class Activity(models.Model):
 
     estimated_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
-    latitude = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
+    latitude  = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
 
     tips = models.TextField(null=True, blank=True)
@@ -107,8 +116,8 @@ class Activity(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = "activities"
-        ordering = ["order_index"]
+        db_table       = "activities"
+        ordering       = ["order_index"]
         unique_together = ("day", "title")
 
     def __str__(self):
