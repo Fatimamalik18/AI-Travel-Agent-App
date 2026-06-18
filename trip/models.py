@@ -1,7 +1,10 @@
+# With constraints like no negative value etc
 import uuid
 from django.db import models
 from django.conf import settings
-
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
+from datetime import date
 
 # =========================
 # CHOICES (as per document Section 2.3)
@@ -39,18 +42,21 @@ class Trip(models.Model):
         editable=False
     )
 
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="trips"
-    )
-
     title = models.CharField(max_length=255)
     start_date = models.DateField()
     end_date = models.DateField()
-    traveller_count = models.IntegerField()
+    
+    # ✅ CONSTRAINT: traveller_count > 0
+    traveller_count = models.IntegerField(
+        validators=[MinValueValidator(1)]  # 1 se kam nahi ho sakta
+    )
 
-    budget_total = models.DecimalField(max_digits=12, decimal_places=2)
+    # ✅ CONSTRAINT: budget_total > 0
+    budget_total = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)]  # 0 ya negative nahi
+    )
 
     travel_style = models.CharField(
         max_length=10,
@@ -63,7 +69,7 @@ class Trip(models.Model):
         default=TransportMode.MIXED
     )
 
-    itinerary_json = models.JSONField()
+    itinerary_json = models.JSONField(default=dict)
 
     status = models.CharField(
         max_length=10,
@@ -73,14 +79,62 @@ class Trip(models.Model):
 
     is_public = models.BooleanField(default=False)
 
-    max_days = models.IntegerField(default=14)
-    max_destinations = models.IntegerField(default=3)
+    # ✅ Auto-calculate max_days (ab editable nahi)
+    max_days = models.IntegerField(
+        default=0,
+        editable=False  # 👈 User manually edit nahi kar sakta
+    )
+    
+    max_destinations = models.IntegerField(
+        default=3,
+        validators=[MinValueValidator(1)]  # Kam se kam 1 destination
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-created_at']
+        # ✅ Database level constraints
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(traveller_count__gte=1),
+                name='traveller_count_positive'
+            ),
+            models.CheckConstraint(
+                check=models.Q(budget_total__gt=0),
+                name='budget_total_positive'
+            ),
+            models.CheckConstraint(
+                check=models.Q(max_destinations__gte=1),
+                name='max_destinations_positive'
+            ),
+        ]
+
+    def clean(self):
+        """Model-level validation"""
+        errors = {}
+        
+        # ✅ Start date cannot be in past
+        if self.start_date and self.start_date < date.today():
+            errors['start_date'] = 'Start date cannot be in the past!'
+        
+        # ✅ End date must be after start date
+        if self.start_date and self.end_date:
+            if self.end_date <= self.start_date:
+                errors['end_date'] = 'End date must be after start date!'
+        
+        # ✅ Auto-calculate max_days
+        if self.start_date and self.end_date:
+            delta = self.end_date - self.start_date
+            self.max_days = delta.days + 1  # +1 because inclusive
+        
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # Clean validation call karein
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.title} ({self.start_date} to {self.end_date})"
@@ -115,7 +169,14 @@ class TripPreferences(models.Model):
     dietary_restrictions = models.TextField(blank=True, null=True)
     mobility_requirements = models.TextField(blank=True, null=True)
 
-    preferred_transport_modes = models.JSONField(default=list, blank=True, null=True)
+    # ✅ CHANGE: JSON se CharField mein convert kiya (enum ke liye)
+    preferred_transport_modes = models.CharField(
+        max_length=30,
+        choices=TransportMode.choices,
+        default=TransportMode.MIXED,
+        blank=True,
+        null=True
+    )
 
     notes = models.TextField(blank=True, null=True)
 
@@ -124,20 +185,7 @@ class TripPreferences(models.Model):
 
 
 # =========================
-# DESTINATION MODEL (referenced from destinations app)
-# We'll use a string reference to avoid circular import
-# =========================
-class Destination(models.Model):
-    """
-    This model is defined in the destination app.
-    Including this as a proxy for reference in TripDestination.
-    The actual model should be in destination/models.py
-    """
-    pass
-
-
-# =========================
-# TRIP DESTINATIONS MODEL (Table 3.4b)
+# TRIP DESTINATION MODEL (Table 3.4b)
 # =========================
 class TripDestination(models.Model):
     id = models.UUIDField(
@@ -145,31 +193,40 @@ class TripDestination(models.Model):
         default=uuid.uuid4,
         editable=False
     )
-
+    
     trip = models.ForeignKey(
         Trip,
         on_delete=models.CASCADE,
         related_name="trip_destinations"
     )
-
-    # Using string reference to avoid circular import
+    
     destination = models.ForeignKey(
         "destination.Destination",
         on_delete=models.RESTRICT,
         related_name="trip_destinations"
     )
 
-    order_index = models.IntegerField()
+    # ✅ CONSTRAINT: order_index > 0
+    order_index = models.IntegerField(
+        validators=[MinValueValidator(1)]  # 0 ya negative nahi
+    )
 
     arrival_date = models.DateField(blank=True, null=True)
     departure_date = models.DateField(blank=True, null=True)
-    nights = models.IntegerField(default=0)
+    
+    # ✅ CONSTRAINT: nights >= 0
+    nights = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0)]  # Negative nahi ho sakta
+    )
 
+    # ✅ CONSTRAINT: route_distance >= 0
     route_distance_km = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         blank=True,
-        null=True
+        null=True,
+        validators=[MinValueValidator(0.0)]  # 0 ya positive
     )
 
     notes = models.TextField(blank=True, null=True)
@@ -177,6 +234,51 @@ class TripDestination(models.Model):
     class Meta:
         ordering = ['order_index']
         unique_together = [['trip', 'order_index']]
+        # ✅ Database constraints
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(order_index__gte=1),
+                name='order_index_positive'
+            ),
+            models.CheckConstraint(
+                check=models.Q(nights__gte=0),
+                name='nights_positive'
+            ),
+            models.CheckConstraint(
+                check=models.Q(route_distance_km__gte=0),
+                name='route_distance_positive'
+            ),
+        ]
+
+    def clean(self):
+        """Model-level validation"""
+        errors = {}
+        
+        # ✅ Arrival and departure date validation
+        if self.arrival_date and self.departure_date:
+            if self.departure_date <= self.arrival_date:
+                errors['departure_date'] = 'Departure date must be after arrival date!'
+        
+        # ✅ Auto-calculate nights
+        if self.arrival_date and self.departure_date:
+            delta = self.departure_date - self.arrival_date
+            self.nights = delta.days
+        
+        # ✅ Trip date validation
+        if self.arrival_date and self.trip.start_date:
+            if self.arrival_date < self.trip.start_date:
+                errors['arrival_date'] = f'Arrival cannot be before trip start date ({self.trip.start_date})!'
+        
+        if self.departure_date and self.trip.end_date:
+            if self.departure_date > self.trip.end_date:
+                errors['departure_date'] = f'Departure cannot be after trip end date ({self.trip.end_date})!'
+        
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.order_index}. {self.destination.city_name} ({self.trip.title})"
@@ -185,15 +287,6 @@ class TripDestination(models.Model):
 # =========================
 # TRIP INTERESTS JUNCTION TABLE (Table 3.7)
 # =========================
-class Interest(models.Model):
-    """
-    This model is defined in the destination app.
-    Including this as a proxy for reference in TripInterest.
-    The actual model should be in destination/models.py
-    """
-    pass
-
-
 class TripInterest(models.Model):
     id = models.UUIDField(
         primary_key=True,
@@ -207,7 +300,6 @@ class TripInterest(models.Model):
         related_name="interests"
     )
 
-    # Using string reference to avoid circular import
     interest = models.ForeignKey(
         "destination.Interest",
         on_delete=models.CASCADE,
@@ -222,7 +314,7 @@ class TripInterest(models.Model):
 
 
 # =========================
-# SHARED TRIPS MODEL (Table 3.11) - CORRECTED
+# SHARED TRIPS MODEL - SIMPLIFIED
 # =========================
 class SharedTrip(models.Model):
     id = models.UUIDField(
@@ -236,7 +328,7 @@ class SharedTrip(models.Model):
         on_delete=models.CASCADE,
         related_name="shared_link"
     )
-
+    
     who_created = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -253,13 +345,9 @@ class SharedTrip(models.Model):
 
 
 # =========================
-# SHARED TRIP USERS JUNCTION TABLE (Many-to-Many with metadata)
+# SHARED TRIP USERS JUNCTION TABLE - SIMPLIFIED
 # =========================
 class SharedTripUser(models.Model):
-    """
-    Junction table to track which users a trip is shared with.
-    Uses composite key of (shared_trip, user)
-    """
     shared_trip = models.ForeignKey(
         SharedTrip,
         on_delete=models.CASCADE,
@@ -275,137 +363,103 @@ class SharedTripUser(models.Model):
     shared_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        # Composite primary key using unique_together
         unique_together = [['shared_trip', 'user']]
         indexes = [
             models.Index(fields=['shared_trip', 'user']),
         ]
     
     def __str__(self):
-        return f"Trip '{self.shared_trip.trip.title}' shared with {self.user.email}"
+        return f"{self.shared_trip.trip.title} → {self.user.email}"
+    
 
-# =========================
-# ITINERARY MODEL (Table 3.8)
-# =========================
-class Itinerary(models.Model):
+# ==============================================================
+# USER TRIP MAPPING
+# ==============================================================
+class UserTripStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    DONE = "done", "Done"
+
+
+class UserTrip(models.Model):
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
         editable=False
     )
 
-    trip = models.OneToOneField(
-        Trip,
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="itinerary"
+        related_name="user_trips"
     )
 
-    estimated_total_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    accommodation_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    transport_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    food_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    activities_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    fuel_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    misc_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    trip = models.ForeignKey(
+        "trip.Trip",
+        on_delete=models.CASCADE,
+        related_name="user_trips"
+    )
+
+    status = models.CharField(
+        max_length=10,
+        choices=UserTripStatus.choices,
+        default=UserTripStatus.PENDING
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Itinerary for {self.trip.title}"
-
-
-# =========================
-# ITINERARY DAYS MODEL (Table 3.9)
-# =========================
-class ItineraryDay(models.Model):
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False
-    )
-
-    itinerary = models.ForeignKey(
-        Itinerary,
-        on_delete=models.CASCADE,
-        related_name="days"
-    )
-
-    trip_destination = models.ForeignKey(
-        TripDestination,
-        on_delete=models.CASCADE,
-        related_name="itinerary_days",
-        null=True,
-        blank=True
-    )
-
-    day_number = models.IntegerField()
-    date = models.DateField()
-    theme = models.CharField(max_length=255, blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['day_number']
-        unique_together = [['itinerary', 'day_number']]
+        db_table = "user_trips"
+        ordering = ['-created_at']
+        unique_together = [['user', 'trip']]
 
     def __str__(self):
-        return f"Day {self.day_number}: {self.date}"
+        return f"User: {self.user.email} - Trip: {self.trip.title} - Status: {self.status}"
 
 
-# =========================
-# ACTIVITIES MODEL (Table 3.10)
-# =========================
-class ActivityCategory(models.TextChoices):
-    FOOD = "food", "Food & Dining"
-    ACTIVITY = "activity", "Activity"
-    HOTEL = "hotel", "Hotel/Accommodation"
-    TRANSPORT = "transport", "Transport"
-
-
-class Activity(models.Model):
+# ==============================================================
+# REVIEWS
+# ==============================================================
+class Review(models.Model):
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
         editable=False
     )
 
-    day = models.ForeignKey(
-        ItineraryDay,
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="activities"
+        related_name="reviews"
     )
 
-    order_index = models.IntegerField(default=1)
-    time = models.TimeField(blank=True, null=True)
-    title = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-
-    category = models.CharField(
-        max_length=50,
-        choices=ActivityCategory.choices
+    trip = models.ForeignKey(
+        "trip.Trip",  
+        on_delete=models.CASCADE,
+        related_name="reviews"
     )
 
-    transport_mode = models.CharField(
-        max_length=30,
-        choices=TransportMode.choices,
-        blank=True,
-        null=True
+    review = models.TextField()
+    
+    rating = models.IntegerField(
+        choices=[(i, f"{i} Star{'s' if i > 1 else ''}") for i in range(1, 6)],
+        help_text="Rating from 1 to 5 stars",
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
-
-    estimated_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-
-    latitude = models.DecimalField(max_digits=10, decimal_places=6, blank=True, null=True)
-    longitude = models.DecimalField(max_digits=10, decimal_places=6, blank=True, null=True)
-
-    tips = models.TextField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['order_index']
-        unique_together = [['day', 'title']]
-
-    def save(self, *args, **kwargs):
-        self.title = self.title.lower()
-        super().save(*args, **kwargs)
+        db_table = "reviews"
+        ordering = ['-created_at']
+        unique_together = [['user', 'trip']]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(rating__gte=1) & models.Q(rating__lte=5),
+                name='rating_between_1_and_5'
+            ),
+        ]
 
     def __str__(self):
-        return f"{self.title} ({self.get_category_display()})"
+        return f"Review by {self.user.email} for {self.trip.title} - Rating: {self.rating}/5"
