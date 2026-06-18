@@ -13,6 +13,10 @@ urlpatterns = [
 
     # Itineraries APIs
     path('api/itineraries/', include('itineraries.urls')),
+    
+    path('api/trip/', include('trip.urls')),
+    path('api/destination/', include('destination.urls')),
+    path('api/agent/', include('AI_engine.urls')),
 ]
 
 

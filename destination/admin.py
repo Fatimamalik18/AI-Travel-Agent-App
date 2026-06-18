@@ -6,6 +6,7 @@ from .models import (
     HotelRecommendation, TransportRecommendation,
     CostBenchmark
 )
+from django.core.exceptions import ValidationError
 
 
 # =========================
@@ -15,30 +16,119 @@ class AttractionInline(admin.TabularInline):
     model = Attraction
     extra = 1
     fields = ['name', 'category', 'entry_fee', 'duration_hours', 'is_active']
+    
+    # ✅ UI validation attributes
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        form = formset.form
+        
+        form.base_fields['entry_fee'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['duration_hours'].widget.attrs.update({
+            'min': 0,
+            'step': 0.5
+        })
+        return formset
 
 
 class RestaurantInline(admin.TabularInline):
     model = Restaurant
     extra = 1
     fields = ['name', 'area', 'category', 'cuisine_type', 'avg_cost_per_person', 'rating']
+    
+    # ✅ UI validation attributes
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        form = formset.form
+        
+        form.base_fields['avg_cost_per_person'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['rating'].widget.attrs.update({
+            'min': 0,
+            'max': 5,
+            'step': 0.1
+        })
+        return formset
 
 
 class HotelInline(admin.TabularInline):
     model = HotelRecommendation
     extra = 1
     fields = ['hotel_name', 'location', 'accommodation_type', 'avg_price_low', 'avg_price_high']
+    
+    # ✅ UI validation attributes
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        form = formset.form
+        
+        form.base_fields['avg_price_low'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['avg_price_high'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['rating'].widget.attrs.update({
+            'min': 0,
+            'max': 5,
+            'step': 0.1
+        })
+        return formset
 
 
 class TransportInline(admin.TabularInline):
     model = TransportRecommendation
     extra = 1
     fields = ['transport_type', 'provider', 'origin', 'estimated_cost']
+    
+    # ✅ UI validation attributes
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        form = formset.form
+        
+        form.base_fields['estimated_cost'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        return formset
 
 
 class CostBenchmarkInline(admin.TabularInline):
     model = CostBenchmark
     extra = 1
     fields = ['travel_style', 'avg_hotel_per_night', 'avg_food_per_day', 'avg_transport_per_day', 'avg_activity_per_day']
+    
+    # ✅ UI validation attributes
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        form = formset.form
+        
+        form.base_fields['avg_hotel_per_night'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['avg_food_per_day'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['avg_transport_per_day'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['avg_activity_per_day'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['fuel_price_per_litre'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        return formset
 
 
 # =========================
@@ -82,6 +172,35 @@ class DestinationAdmin(admin.ModelAdmin):
     ]
 
     actions = ['activate_destinations', 'deactivate_destinations']
+    
+    # ✅ UI validation attributes
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        
+        form.base_fields['avg_budget_low'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['avg_budget_mid'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['avg_budget_high'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['latitude'].widget.attrs.update({
+            'min': -90,
+            'max': 90,
+            'step': 0.000001
+        })
+        form.base_fields['longitude'].widget.attrs.update({
+            'min': -180,
+            'max': 180,
+            'step': 0.000001
+        })
+        
+        return form
 
     def activate_destinations(self, request, queryset):
         queryset.update(is_active=True)
@@ -139,6 +258,31 @@ class AttractionAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         })
     )
+    
+    # ✅ UI validation attributes
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        
+        form.base_fields['entry_fee'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['duration_hours'].widget.attrs.update({
+            'min': 0,
+            'step': 0.5
+        })
+        form.base_fields['latitude'].widget.attrs.update({
+            'min': -90,
+            'max': 90,
+            'step': 0.000001
+        })
+        form.base_fields['longitude'].widget.attrs.update({
+            'min': -180,
+            'max': 180,
+            'step': 0.000001
+        })
+        
+        return form
 
     def destination_link(self, obj):
         url = reverse('admin:destination_destination_change', args=[obj.destination.id])
@@ -162,6 +306,22 @@ class RestaurantAdmin(admin.ModelAdmin):
     search_fields = ['name', 'area', 'destination__city_name']
 
     raw_id_fields = ['destination']
+    
+    # ✅ UI validation attributes
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        
+        form.base_fields['avg_cost_per_person'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['rating'].widget.attrs.update({
+            'min': 0,
+            'max': 5,
+            'step': 0.1
+        })
+        
+        return form
 
     def destination_link(self, obj):
         url = reverse('admin:destination_destination_change', args=[obj.destination.id])
@@ -185,6 +345,26 @@ class HotelRecommendationAdmin(admin.ModelAdmin):
     search_fields = ['hotel_name', 'location', 'destination__city_name']
 
     raw_id_fields = ['destination']
+    
+    # ✅ UI validation attributes
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        
+        form.base_fields['avg_price_low'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['avg_price_high'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['rating'].widget.attrs.update({
+            'min': 0,
+            'max': 5,
+            'step': 0.1
+        })
+        
+        return form
 
     def destination_link(self, obj):
         url = reverse('admin:destination_destination_change', args=[obj.destination.id])
@@ -213,6 +393,17 @@ class TransportRecommendationAdmin(admin.ModelAdmin):
     search_fields = ['provider', 'origin', 'destination__city_name', 'notes']
 
     raw_id_fields = ['destination']
+    
+    # ✅ UI validation attributes
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        
+        form.base_fields['estimated_cost'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        
+        return form
 
     def destination_link(self, obj):
         url = reverse('admin:destination_destination_change', args=[obj.destination.id])
@@ -259,10 +450,36 @@ class CostBenchmarkAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         })
     )
+    
+    # ✅ UI validation attributes
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        
+        form.base_fields['avg_hotel_per_night'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['avg_food_per_day'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['avg_transport_per_day'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['avg_activity_per_day'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        form.base_fields['fuel_price_per_litre'].widget.attrs.update({
+            'min': 0,
+            'step': 0.01
+        })
+        
+        return form
 
     def destination_link(self, obj):
         url = reverse('admin:destination_destination_change', args=[obj.destination.id])
         return format_html('<a href="{}">{}</a>', url, obj.destination.city_name)
 
     destination_link.short_description = 'Destination'
-
