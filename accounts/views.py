@@ -7,8 +7,10 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from rest_framework.parsers import MultiPartParser, FormParser
+
 from .models import CustomUser, Interest, UserPreferences, Notification
-from .serializers import CustomUserSerializer, SignupSerializer, InterestSerializer,UserPreferencesSerializer, UserProfileSerializer, NotificationSerializer 
+from .serializers import UserPreferenceInterestSerializer, CustomUserSerializer, SignupSerializer, InterestSerializer,UserPreferencesSerializer, UserProfileSerializer, NotificationSerializer 
 
 
 # =========================
@@ -133,11 +135,30 @@ class InterestListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = InterestSerializer(data=request.data)
+        serializer = UserPreferenceInterestSerializer(
+            data=request.data,
+            context={"request": request}
+        )
+
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            preferences = serializer.save()
+
+            return Response(
+                {
+                    "message": "Interests saved successfully",
+                    "selected_interests": list(
+                        preferences.selected_interests.values_list(
+                            "name", flat=True
+                        )
+                    )
+                },
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 # =========================
@@ -155,6 +176,31 @@ class InterestDetailView(APIView):
         interest = get_object_or_404(Interest, pk=pk)
         interest.delete()
         return Response({"detail": "Interest deleted successfully."}, status=status.HTTP_200_OK)
+
+
+# ==========================================
+# USER INTERESTS — SELECT/SAVE (max 6, min 1)
+# ==========================================
+class UserInterestsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = CustomUserSerializer(request.user)
+        return Response(
+            {"interests": serializer.data.get("interests", [])},
+            status=status.HTTP_200_OK
+        )
+
+    def post(self, request):
+        serializer = CustomUserSerializer(
+            request.user,
+            data={"interests": request.data.get("interests", [])},
+            partial=True
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ==========================================
@@ -242,6 +288,8 @@ class UserPreferencesView(APIView):
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
+    parser_classes = [MultiPartParser, FormParser]
+
     def get(self, request):
         serializer = UserProfileSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -266,7 +314,6 @@ class UserProfileView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 # ==========================================
 # NOTIFICATION LIST + CREATE API

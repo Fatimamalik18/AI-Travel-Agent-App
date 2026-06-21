@@ -6,6 +6,7 @@ from .views import (
     SignupView,
     InterestListCreateView,  # naya import
     InterestDetailView,       # naya import
+    UserInterestsView,        # ✅ CHECK ADDED: naya import
     UserPreferencesView,
     UserProfileView, 
     NotificationListCreateView,   # naya import
@@ -45,6 +46,9 @@ urlpatterns = [
      # Interest APIs  ← naye URLs
     path('interests/', InterestListCreateView.as_view(), name='interest-list-create'),
     path('interests/<uuid:pk>/', InterestDetailView.as_view(), name='interest-detail'),
+
+    # ✅ CHECK ADDED: User Interests API (select/save max 6, min 1)
+    path('user-interests/', UserInterestsView.as_view(), name='user-interests'),
     
     
     # User Preferences API
@@ -57,4 +61,3 @@ urlpatterns = [
     path('notifications/', NotificationListCreateView.as_view(), name='notification-list-create'),
     path('notifications/<uuid:pk>/', NotificationDetailView.as_view(), name='notification-detail'),
 ]
-

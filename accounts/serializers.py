@@ -5,13 +5,33 @@ from .models import CustomUser, Interest, UserPreferences, UserVehicle, Notifica
 
 class CustomUserSerializer(serializers.ModelSerializer):
 
+    # ✅ CHECK ADDED: ab UUID ki jagah "name" se interest select hoga
+    interests = serializers.SlugRelatedField(
+        queryset=Interest.objects.all(),
+        slug_field='name',
+        many=True,
+        required=False
+    )
+
     class Meta:
         model = CustomUser
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
-            'avatar_file', 'home_city', 'language', 'is_verified'
+            'avatar_file', 'home_city', 'language', 'is_verified',
+            'interests'
         ]
         read_only_fields = ['id', 'is_verified']
+
+    def validate_interests(self, value):
+        if len(value) < 1:
+            raise serializers.ValidationError(
+                "Kam az kam 1 interest select karna zaroori hai."
+            )
+        if len(value) > 6:
+            raise serializers.ValidationError(
+                "Aap zyada se zyada 6 interests select kar sakte hain."
+            )
+        return value
 
 
 class SignupSerializer(serializers.ModelSerializer):
@@ -51,28 +71,100 @@ class InterestSerializer(serializers.ModelSerializer):
         model = Interest
         fields = ['id', 'name', 'created_at']
         read_only_fields = ['id', 'created_at']
+        
+from rest_framework import serializers
+from .models import UserPreferences, Interest
+
+
+class UserPreferenceInterestSerializer(serializers.Serializer):
+    interests = serializers.ListField(
+        child=serializers.CharField(),
+        min_length=1,
+        max_length=6
+    )
+
+    def validate_interests(self, value):
+        interests = Interest.objects.filter(name__in=value)
+
+        if interests.count() != len(set(value)):
+            found = set(interests.values_list("name", flat=True))
+            missing = list(set(value) - found)
+            raise serializers.ValidationError(
+                f"Invalid interests: {missing}"
+            )
+
+        return value
+
+    def save(self, **kwargs):
+        user = self.context["request"].user
+
+        preferences, _ = UserPreferences.objects.get_or_create(
+            user=user
+        )
+
+        interests = Interest.objects.filter(
+            name__in=self.validated_data["interests"]
+        )
+
+        preferences.selected_interests.set(interests)
+        preferences.save()
+
+        return preferences
 
 
 class UserPreferencesSerializer(serializers.ModelSerializer):
 
-    # ✅ CHECK ADDED: selected_interests field (Interest model se link, multi-select)
-    selected_interests = serializers.PrimaryKeyRelatedField(
-        queryset=Interest.objects.all(),
-        many=True
+    selected_interests = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field='name'
     )
 
     class Meta:
         model = UserPreferences
         fields = [
-            'id', 'user', 'travel_interests', 'preferred_transport_modes',
-            'preferred_seat_class', 'food_preferences', 'travel_style',
-            'default_group_size', 'max_budget_per_trip',
-            'selected_interests', 'created_at', 'updated_at'
+            'id',
+            'user',
+            'preferred_transport_modes',
+            'selected_interests',
+            'preferred_seat_class',
+            'food_preferences',
+            'travel_style',
+            'default_group_size',
+            'max_budget_per_trip',
+            'created_at',
+            'updated_at'
         ]
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id',
+            'user',
+            'created_at',
+            'updated_at'
+        ]
 
-    # ✅ CHECK ADDED: max 6, min 1 interests select hone chahiye
-    def validate_selected_interests(self, value):
+
+class UserProfileSerializer(serializers.ModelSerializer):
+
+    preferences = UserPreferencesSerializer(read_only=True)
+
+    # ✅ CHECK ADDED: yahan bhi name se interests select honge
+    interests = serializers.SlugRelatedField(
+        queryset=Interest.objects.all(),
+        slug_field='name',
+        many=True,
+        required=False
+    )
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'avatar_file', 'home_city', 'language', 'is_verified',
+            'interests', 'preferences',
+        ]
+        read_only_fields = ['id', 'is_verified']
+
+    def validate_interests(self, value):
         if len(value) < 1:
             raise serializers.ValidationError(
                 "Kam az kam 1 interest select karna zaroori hai."
@@ -83,20 +175,9 @@ class UserPreferencesSerializer(serializers.ModelSerializer):
             )
         return value
 
-
-class UserProfileSerializer(serializers.ModelSerializer):
-
-    preferences = UserPreferencesSerializer(read_only=True)
-
-    class Meta:
-        model = CustomUser
-        fields = [
-            'id', 'username', 'email', 'first_name', 'last_name',
-            'avatar_file', 'home_city', 'language', 'is_verified', 'preferences',
-        ]
-        read_only_fields = ['id', 'is_verified']
-
     def update(self, instance, validated_data):
+        interests = validated_data.pop('interests', None)
+
         instance.username    = validated_data.get('username',    instance.username)
         instance.email       = validated_data.get('email',       instance.email)
         instance.first_name  = validated_data.get('first_name',  instance.first_name)
@@ -105,10 +186,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
         instance.home_city   = validated_data.get('home_city',   instance.home_city)
         instance.language    = validated_data.get('language',    instance.language)
         instance.save()
+
+        if interests is not None:
+            instance.interests.set(interests)
+
         return instance
 
 
-# ✅ CHECK ADDED: token_expires_at future mein hona chahiye
 class SocialAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -127,7 +211,6 @@ class SocialAccountSerializer(serializers.ModelSerializer):
         return value
 
 
-# ✅ CHECK ADDED: read_at future mein nahi ho sakta
 class NotificationSerializer(serializers.ModelSerializer):
 
     class Meta:
