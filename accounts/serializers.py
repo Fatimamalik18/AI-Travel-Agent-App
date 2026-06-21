@@ -54,14 +54,34 @@ class InterestSerializer(serializers.ModelSerializer):
 
 
 class UserPreferencesSerializer(serializers.ModelSerializer):
+
+    # ✅ CHECK ADDED: selected_interests field (Interest model se link, multi-select)
+    selected_interests = serializers.PrimaryKeyRelatedField(
+        queryset=Interest.objects.all(),
+        many=True
+    )
+
     class Meta:
         model = UserPreferences
         fields = [
             'id', 'user', 'travel_interests', 'preferred_transport_modes',
             'preferred_seat_class', 'food_preferences', 'travel_style',
-            'default_group_size', 'max_budget_per_trip', 'created_at', 'updated_at'
+            'default_group_size', 'max_budget_per_trip',
+            'selected_interests', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+    # ✅ CHECK ADDED: max 6, min 1 interests select hone chahiye
+    def validate_selected_interests(self, value):
+        if len(value) < 1:
+            raise serializers.ValidationError(
+                "Kam az kam 1 interest select karna zaroori hai."
+            )
+        if len(value) > 6:
+            raise serializers.ValidationError(
+                "Aap zyada se zyada 6 interests select kar sakte hain."
+            )
+        return value
 
 
 class UserProfileSerializer(serializers.ModelSerializer):

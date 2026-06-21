@@ -70,6 +70,13 @@ class UserPreferences(models.Model):
         blank=True
     )
 
+    # ✅ CHECK ADDED: user max 6, min 1 interests select kar sakta hai (Interest model se link)
+    selected_interests = models.ManyToManyField(
+        'Interest',
+        related_name="users",
+        blank=True
+    )
+
     class TransportModeChoices(models.TextChoices):
         BUS    = "bus", "Bus"
         TRAIN  = "train", "Train"
@@ -133,13 +140,26 @@ class UserPreferences(models.Model):
 class Interest(models.Model):
 
     class InterestChoices(models.TextChoices):
-        ADVENTURE = "adventure", "Adventure"
-        CULTURE   = "culture", "Culture"
-        NATURE    = "nature", "Nature"
-        FOOD      = "food", "Food"
-        SPORTS    = "sports", "Sports"
-        TECH      = "tech", "Technology"
-        MUSIC     = "music", "Music"
+        ADVENTURE          = "adventure", "Adventure"
+        CULTURE            = "culture", "Culture"
+        NATURE             = "nature", "Nature"
+        FOOD               = "food", "Food"
+        SPORTS             = "sports", "Sports"
+        TECH               = "tech", "Technology"
+        MUSIC              = "music", "Music"
+        MOUNTAINS          = "mountains", "Mountains"
+        HISTORICAL_PLACES  = "historical_places", "Historical Places"
+        FOOD_TOURISM       = "food_tourism", "Food Tourism"
+        WILDLIFE           = "wildlife", "Wildlife"
+        MUSEUMS            = "museums", "Museums"
+        ADVENTURE_SPORTS   = "adventure_sports", "Adventure Sports"
+        RELIGIOUS_TOURISM  = "religious_tourism", "Religious Tourism"
+        PHOTOGRAPHY        = "photography", "Photography"
+        SHOPPING           = "shopping", "Shopping"
+        LUXURY_TRAVEL      = "luxury_travel", "Luxury Travel"
+        CAMPING            = "camping", "Camping"
+        ROAD_TRIPS         = "road_trips", "Road Trips"
+
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 

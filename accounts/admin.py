@@ -59,6 +59,9 @@ class UserPreferencesAdmin(admin.ModelAdmin):
     ordering      = ("user__username",)
     readonly_fields = ("id", "created_at", "updated_at")
 
+    # ✅ CHECK ADDED: selected_interests ke liye multi-select widget (dono taraf list, ek se zyada select hosake)
+    filter_horizontal = ("selected_interests",)
+
 
 @admin.register(SocialAccount)
 class SocialAccountAdmin(admin.ModelAdmin):
