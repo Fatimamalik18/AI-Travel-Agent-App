@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import CustomUser, Interest, UserPreferences, Notification
-from .serializers import UserPreferenceInterestSerializer, CustomUserSerializer, SignupSerializer, InterestSerializer,UserPreferencesSerializer, UserProfileSerializer, NotificationSerializer 
+from .serializers import UserPreferenceInterestSerializer, CustomUserSerializer, SignupSerializer, InterestSerializer, UserPreferencesSerializer, UserProfileSerializer, NotificationSerializer
 
 
 # =========================
@@ -44,7 +44,6 @@ class UserDetailView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
-        # Sirf apna account update kar sakta hai
         if str(request.user.id) != str(pk):
             return Response(
                 {"detail": "You do not have permission to update another user's account."},
@@ -61,7 +60,6 @@ class UserDetailView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        # Sirf apna account delete kar sakta hai
         if str(request.user.id) != str(pk):
             return Response(
                 {"detail": "You do not have permission to delete another user's account."},
@@ -96,8 +94,14 @@ class LoginView(APIView):
 
         refresh = RefreshToken.for_user(user)
 
+        # ✅ NEW: role ka naam JWT token ke andar bhi daal diya
+        refresh["role"] = user.role.name if user.role else None
+
         return Response({
             "id": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "role": user.role.name if user.role else None,   # ✅ NEW
             "access_token": str(refresh.access_token),
             "refresh_token": str(refresh)
         })
@@ -315,6 +319,7 @@ class UserProfileView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 # ==========================================
 # NOTIFICATION LIST + CREATE API
 # ==========================================
@@ -376,7 +381,6 @@ class UpdateNotification(APIView):
         try:
             notification = get_object_or_404(Notification, pk=pk, user=request.user)
 
-            # Agar already read ho chuki hai
             if notification.read_at is not None:
                 return Response(
                     {"detail": "seen"},

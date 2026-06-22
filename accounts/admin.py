@@ -7,7 +7,19 @@ from .models import (
     UserVehicle,
     Interest,
     Notification,
+    Role,
 )
+
+
+@admin.register(Role)
+class RoleAdmin(admin.ModelAdmin):
+
+    list_display  = ("name", "description", "created_at")
+    search_fields = ("name",)
+    ordering      = ("name",)
+
+    # ✅ Add/Edit form mein sirf name aur description dikhengi, id chupi rahegi
+    fields = ("name", "description")
 
 
 @admin.register(CustomUser)
@@ -21,7 +33,7 @@ class CustomUserAdmin(UserAdmin):
             "fields": ("first_name", "last_name", "email", "avatar_file", "home_city")
         }),
         ("Settings", {
-            "fields": ("language", "is_verified")
+            "fields": ("language", "is_verified", "role")
         }),
         ("Permissions", {
             "fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")
@@ -38,15 +50,15 @@ class CustomUserAdmin(UserAdmin):
                 "username", "email",
                 "first_name", "last_name",
                 "avatar_file", "home_city",
-                "language", "is_verified",
+                "language", "is_verified", "role",
                 "password1", "password2",
             ),
         }),
     )
 
-    list_display  = ("username", "email", "first_name", "last_name", "is_verified", "is_staff")
+    list_display  = ("username", "email", "first_name", "last_name", "role", "is_verified", "is_staff")
     search_fields = ("username", "email", "first_name", "last_name")
-    list_filter   = ("is_staff", "is_verified", "language")
+    list_filter   = ("is_staff", "is_verified", "language", "role")
     ordering      = ("-date_joined",)
 
 
