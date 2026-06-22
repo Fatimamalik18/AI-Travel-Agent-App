@@ -13,6 +13,28 @@ def validate_future_datetime(value):
         raise ValidationError("Purana date/time accept nahi hoga. Future ka date/time dalein.")
 
 
+# ==========================================
+# ROLE MODEL (NEW)
+# ==========================================
+class Role(models.Model):
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    name = models.CharField(
+        max_length=50,
+        unique=True
+    )
+
+    description = models.CharField(max_length=255, blank=True, null=True)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "roles"
+
+    def __str__(self):
+        return self.name
+
+
 class CustomUser(AbstractUser):
 
     id = models.UUIDField(
@@ -39,6 +61,15 @@ class CustomUser(AbstractUser):
     )
 
     is_verified = models.BooleanField(default=False)
+
+    # ✅ NEW FIELD: role (admin / user) — ForeignKey, Role table se link
+    role = models.ForeignKey(
+        "Role",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="users"
+    )
 
     class Meta:
         db_table = "users"

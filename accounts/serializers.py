@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import CustomUser, Interest, UserPreferences, UserVehicle, Notification, SocialAccount
+from .models import CustomUser, Interest, UserPreferences, UserVehicle, Notification, SocialAccount, Role
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -13,12 +13,18 @@ class CustomUserSerializer(serializers.ModelSerializer):
         required=False
     )
 
+    # ✅ NEW: role ka naam (read-only)
+    role = serializers.SlugRelatedField(
+        slug_field='name',
+        read_only=True
+    )
+
     class Meta:
         model = CustomUser
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
             'avatar_file', 'home_city', 'language', 'is_verified',
-            'interests'
+            'interests', 'role'
         ]
         read_only_fields = ['id', 'is_verified']
 
@@ -71,9 +77,14 @@ class InterestSerializer(serializers.ModelSerializer):
         model = Interest
         fields = ['id', 'name', 'created_at']
         read_only_fields = ['id', 'created_at']
-        
-from rest_framework import serializers
-from .models import UserPreferences, Interest
+
+
+# ✅ NEW: Role serializer (agar kabhi role list/detail API banani ho)
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = ['name', 'description', 'created_at']
+        read_only_fields = ['created_at']
 
 
 class UserPreferenceInterestSerializer(serializers.Serializer):
@@ -155,12 +166,18 @@ class UserProfileSerializer(serializers.ModelSerializer):
         required=False
     )
 
+    # ✅ NEW: role ka naam (read-only)
+    role = serializers.SlugRelatedField(
+        slug_field='name',
+        read_only=True
+    )
+
     class Meta:
         model = CustomUser
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
             'avatar_file', 'home_city', 'language', 'is_verified',
-            'interests', 'preferences',
+            'interests', 'preferences', 'role'
         ]
         read_only_fields = ['id', 'is_verified']
 
