@@ -117,3 +117,6 @@ logs/
 # Backup files
 *.bak
 *.tmp
+
+
+*.pyc
