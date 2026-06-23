@@ -125,11 +125,6 @@ class UserPreferenceInterestSerializer(serializers.Serializer):
 
 class UserPreferencesSerializer(serializers.ModelSerializer):
 
-    selected_interests = serializers.SlugRelatedField(
-        many=True,
-        read_only=True,
-        slug_field='name'
-    )
 
     class Meta:
         model = UserPreferences
@@ -137,7 +132,7 @@ class UserPreferencesSerializer(serializers.ModelSerializer):
             'id',
             'user',
             'preferred_transport_modes',
-            'selected_interests',
+            'travel_interests',
             'preferred_seat_class',
             'food_preferences',
             'travel_style',
@@ -145,6 +140,7 @@ class UserPreferencesSerializer(serializers.ModelSerializer):
             'max_budget_per_trip',
             'created_at',
             'updated_at'
+            
         ]
         read_only_fields = [
             'id',

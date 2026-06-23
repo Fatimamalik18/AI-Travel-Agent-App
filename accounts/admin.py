@@ -72,7 +72,7 @@ class UserPreferencesAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created_at", "updated_at")
 
     # ✅ CHECK ADDED: selected_interests ke liye multi-select widget (dono taraf list, ek se zyada select hosake)
-    filter_horizontal = ("selected_interests",)
+  
 
 
 @admin.register(SocialAccount)

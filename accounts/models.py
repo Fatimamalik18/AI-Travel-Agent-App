@@ -96,12 +96,7 @@ class UserPreferences(models.Model):
         blank=True
     )
 
-    # ✅ CHECK ADDED: user max 6, min 1 interests select kar sakta hai (Interest model se link)
-    selected_interests = models.ManyToManyField(
-        'Interest',
-        related_name="users",
-        blank=True
-    )
+   
 
     class TransportModeChoices(models.TextChoices):
         BUS    = "bus", "Bus"
