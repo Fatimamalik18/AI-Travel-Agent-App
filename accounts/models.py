@@ -92,7 +92,9 @@ class UserPreferences(models.Model):
 
     travel_interests = models.CharField(
         max_length=500,
+
         
+
         blank=True
     )
 
