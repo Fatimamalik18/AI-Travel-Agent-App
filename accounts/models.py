@@ -88,16 +88,11 @@ class UserPreferences(models.Model):
         related_name="preferences"
     )
 
-    class TravelInterestChoices(models.TextChoices):
-        ADVENTURE = "adventure", "Adventure"
-        CULTURE   = "culture", "Culture"
-        NATURE    = "nature", "Nature"
-        FOOD      = "food", "Food"
-        SPORTS    = "sports", "Sports"
+   
 
     travel_interests = models.CharField(
-        max_length=20,
-        choices=TravelInterestChoices.choices,
+        max_length=500,
+        
         blank=True
     )
 
@@ -117,7 +112,8 @@ class UserPreferences(models.Model):
     preferred_transport_modes = models.CharField(
         max_length=20,
         choices=TransportModeChoices.choices,
-        blank=True
+         blank=True,
+        null=True
     )
 
     class SeatClassChoices(models.TextChoices):
@@ -140,7 +136,8 @@ class UserPreferences(models.Model):
     food_preferences = models.CharField(
         max_length=20,
         choices=FoodPreferenceChoices.choices,
-        blank=True
+         blank=True,
+        null=True
     )
 
     class TravelStyleChoices(models.TextChoices):
